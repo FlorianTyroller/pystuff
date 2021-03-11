@@ -13,7 +13,7 @@ l = [[(i,j) for i in range(size)] for j in range(size)]
 
 visited = []
 
-def getNeighbours(x,y):
+def getNeighbours(x,y,l):
     a = []
     for i in range(-1,2):
         for j in range(-1,2):
@@ -21,12 +21,18 @@ def getNeighbours(x,y):
                 nx = x+j
                 ny = y+i
                 if nx in range(size) and ny in range(size):
-                    a.append([(nx,ny)])
+                    u = (nx,ny)
+                    if u not in l:
+                        a.append(u)
     return a
 
 def getFields(x,y,iterations):
     global visited
-    return getNeighbours(x,y)
+    a = getNeighbours(x,y)
+    r = []
+    for i in a:
+        u = getNeighbours(i[0],i[1],[i])
+        r.append()
     
 
 
