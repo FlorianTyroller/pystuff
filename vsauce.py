@@ -23,7 +23,7 @@ myfont = pygame.font.SysFont("Times New Roman",20)
 # Initialize pygame
 pygame.init()
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 400,1000
+SCREEN_WIDTH, SCREEN_HEIGHT = 1000,1000
 
 CENTER = (SCREEN_WIDTH//2, SCREEN_HEIGHT//2)
 

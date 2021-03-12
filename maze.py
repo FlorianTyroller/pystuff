@@ -1,4 +1,3 @@
-
 import os
 import pygame
 import time
@@ -15,7 +14,10 @@ from pygame.locals import (
     K_PLUS,
     K_MINUS,
     K_ESCAPE,
+    K_SPACE,
     KEYDOWN,
+    K_n,
+    K_r,
     QUIT,
 )
 
@@ -24,6 +26,7 @@ class Node:
         self.type = type
         self.x, self.y = coords
         self.vorgänger = vorgänger
+        self.g = 0
 
 
 pygame.font.init() 
@@ -32,9 +35,11 @@ myfont = pygame.font.SysFont("Times New Roman",20)
 # Initialize pygame
 pygame.init()
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 800,800
+SCREEN_WIDTH, SCREEN_HEIGHT = 820,820
 
 scale = 20
+
+c = 0
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 grid = [[Node((j,i),None,0) for j in range(SCREEN_WIDTH//scale)]for i in range(SCREEN_HEIGHT//scale)]
@@ -44,40 +49,98 @@ grid = [[Node((j,i),None,0) for j in range(SCREEN_WIDTH//scale)]for i in range(S
 #generate maze
 
 def generate(maze):
+    global openQ
+    global closedQ
+    openQ  = {}
+    openQ[0] = grid[0][0]
+    closedQ = set()
+    dir = [(0,1),(0,-1),(1,0),(-1,0)]
     for i in range(len(grid)):
         for j in range(len(grid)):
-            maze[i][j].type = random.randint(0,1)
+            maze[i][j].type = 0
+
+    for i in range(len(grid)//2):
+        for j in range(len(grid)//2):
+            maze[i*2+1][j*2+1].type = 1
+            d = random.choice(dir)
+            if maze[i*2+1+d[0]][j*2+1+d[1]].type == 0:
+                maze[i*2+1+d[0]][j*2+1+d[1]].type = 1
+    for i in range(len(grid)//4):
+        for j in range(len(grid)//4):
+            maze[i*4+1][j*4+1].type = 1
+            d = random.choice(dir)
+            if maze[i*4+1+d[0]][j*4+1+d[1]].type == 0:
+                maze[i*4+1+d[0]][j*4+1+d[1]].type = 1
+    
+
     maze[0][0].type  = 2
     maze[-1][-1].type  = 3
     return maze
 
 
 #solve maze
-openQ  = PriorityQueue()
-openQ.put((0,grid[0][0])) 
-closedQ = {}
+openQ  = {}
+openQ[0] = grid[0][0]
+closedQ = set()
+
 def solveMaze():
-    while not openQ.empty():
-        currentNode = openQ.get()
+    global openQ
+    global closedQ
+    openQ  = {}
+    openQ[0] = grid[0][0]
+    closedQ = set()
+
+    while len(openQ) > 0 :
+        #print(len(openQ))
+        currentNode = openQ.pop(min(openQ))
         if currentNode.type == 3:
-            return "PathFound"
+            markPath(grid)
+            return
         closedQ.add(currentNode)
         expandNode(currentNode)
-    return "NoPathFound"
+        #time.sleep(0.01)
+        update()
+    print("nopathFound")
     #draw
 
+def markPath(g):
+    u = g[-1][-1]
+    while u.vorgänger is not None:
+        print(u.vorgänger)
+        u.type = 4
+        u = u.vorgänger
 
 
 def expandNode(n):
+    global c
     succ = getSucc(n)
     for s in succ:
         if s in closedQ:
             continue
 
-        tentative_g = g(n) + c(n, s)
+        tentative_g = n.g + 1
 
+        if s in openQ.values() and tentative_g >= s.g:
+            continue
 
+        s.vorgänger = n
+        s.g = tentative_g
 
+        f = tentative_g + getH(s) + (c/100000)
+        c += 1
+
+        if s in openQ.values():
+            for k, v in openQ.items():
+                if v == s:
+                    openQ.pop(k)
+                    openQ[f] = v
+                    break
+        else:
+            openQ[f] = s
+
+def getH(n):
+    a = (len(grid) - n.y) + (len(grid[0]) - n.x)
+    return a
 
 def getSucc(n):
     dir = [(0,1),(0,-1),(1,0),(-1,0)]
@@ -86,7 +149,7 @@ def getSucc(n):
         nx = n.x + d[0]
         ny = n.y + d[1]
         if nx in range(len(grid)) and ny in range(len(grid)):
-            if grid[ny][nx].type == 0:
+            if grid[ny][nx].type == 0 or grid[ny][nx].type == 3:
                 succs.append(grid[ny][nx])
     return succs
 
@@ -108,10 +171,15 @@ def update():
                 color = (255,0,0)
             elif grid[i][j].type  == 3:
                 color = (0,255,0)
-            elif grid[i][j].type  == 4:
-                color = (0,0,255)
-            elif grid[i][j].type  == 5:
-                color = (0,255,255)
+
+            
+            
+            if grid[i][j] in closedQ:
+                color = (200,100,000)
+            if grid[i][j] in openQ.values():
+                color = (100,100,100)
+            if grid[i][j].type  == 4:
+                color = (102, 255, 153)
             pygame.draw.rect(screen,color,(j*scale,i*scale,scale,scale))
 
 
@@ -131,8 +199,10 @@ def update():
 def main():
     global grid
     run = True
+    spam = False
     update()
     grid = generate(grid)
+    
     while run:
         for event in pygame.event.get():
             
@@ -141,6 +211,11 @@ def main():
                 e = event.key 
                 if e == K_ESCAPE:
                     run = False
+                elif e == K_SPACE:
+                    solveMaze()
+                elif e == K_n:
+                    grid = generate(grid)
+               
                 
 
             elif event.type == pygame.QUIT:
