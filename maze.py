@@ -19,6 +19,10 @@ from pygame.locals import (
     K_n,
     K_r,
     QUIT,
+    K_0,
+    K_1,
+    K_2,
+    K_3
 )
 
 class Node:
@@ -27,6 +31,7 @@ class Node:
         self.x, self.y = coords
         self.vorgänger = vorgänger
         self.g = 0
+        self.visited = False
 
 
 pygame.font.init() 
@@ -45,14 +50,125 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 grid = [[Node((j,i),None,0) for j in range(SCREEN_WIDTH//scale)]for i in range(SCREEN_HEIGHT//scale)]
 
 
-
+start = grid[0][0]
+goal = grid[-1][-1]
 #generate maze
-
 def generate(maze):
+    return generateD(maze)
+
+def generateA(maze):
     global openQ
     global closedQ
     openQ  = {}
-    openQ[0] = grid[0][0]
+    openQ[0] = start
+    closedQ = set()
+    stack = []
+    lastL = []
+    dir = [(0,1),(0,-1),(1,0),(-1,0)]
+    for i in range(len(grid)):
+        for j in range(len(grid)):
+            maze[i][j].type = 1
+            maze[i][j].visited = False
+    for i in range(len(grid)//2+1):
+        for j in range(len(grid)//2+1):
+            maze[i*2][j*2].type = 0
+    
+    u = getUCells()
+    c = random.choice(u)
+    while len(u) > 0:
+        
+        lastL.append(len(u))
+        if len(lastL) > 100:
+            lastL.pop(0)
+            if lastL[0] == lastL[-1]:
+                return maze
+        n = getNei(c.x,c.y,2)
+        if len(n) > 0:
+            ne = random.choice(n)
+            if ne in u:
+                ne.visited = True
+                grid[(c.x + ne.x)//2][(c.y + ne.y)//2].type = 0
+                c = ne
+        else:
+            c = random.choice(u)
+        u = getUCells()
+        update()
+    return maze
+
+def getUCells():
+    u = []
+    for i in range(len(grid)//2+1):
+        for j in range(len(grid)//2+1):
+            if not grid[i*2][j*2].visited:
+                u.append(grid[i*2][j*2])
+    return u
+        
+def generateD(maze):
+    global openQ
+    global closedQ
+    global start
+    global goal
+    openQ  = {}
+    openQ[0] = start
+    closedQ = set()
+    stack = []
+    dir = [(0,1),(0,-1),(1,0),(-1,0)]
+    for i in range(len(grid)):
+        for j in range(len(grid)):
+            maze[i][j].type = 1
+            maze[i][j].visited = False
+    
+    for i in range(len(grid)//2+1):
+        for j in range(len(grid)//2+1):
+            maze[i*2][j*2].type = 0
+
+    stack.insert(0,grid[0][0])
+    while len(stack) > 0:
+        print(len(stack))
+        current = stack.pop(0)
+        current.visited = True
+        n = getNei(current.x,current.y,2)
+        
+        if len(n) > 0:
+            stack.insert(0,current)
+            a = random.choice(n)
+            a.visited = True
+            grid[(current.x + a.x)//2][(current.y + a.y)//2].type = 0
+ 
+            stack.insert(0,a)
+            update()
+            
+
+    start.type  = 2
+    goal.type  = 3
+    return maze
+
+
+
+def getNei(x,y,d):
+    dir = [(0,1),(0,-1),(1,0),(-1,0)]
+    n = []
+    for di in dir:
+        nx = x + d * di[0]
+        ny = y + d * di[1]
+        if nx in range(len(grid)) and ny in range(len(grid[0])):
+            if grid[ny][nx].type == 0 and not grid[ny][nx].visited:
+                n.append(grid[ny][nx])
+
+    return n
+
+
+
+
+   
+
+def generateR(maze):
+    global openQ
+    global closedQ
+    global start
+    global goal
+    openQ  = {}
+    openQ[0] = start
     closedQ = set()
     dir = [(0,1),(0,-1),(1,0),(-1,0)]
     for i in range(len(grid)):
@@ -65,29 +181,34 @@ def generate(maze):
             d = random.choice(dir)
             if maze[i*2+1+d[0]][j*2+1+d[1]].type == 0:
                 maze[i*2+1+d[0]][j*2+1+d[1]].type = 1
+                update()
+                #time.sleep(0.1)
+    '''
     for i in range(len(grid)//4):
         for j in range(len(grid)//4):
             maze[i*4+1][j*4+1].type = 1
             d = random.choice(dir)
             if maze[i*4+1+d[0]][j*4+1+d[1]].type == 0:
                 maze[i*4+1+d[0]][j*4+1+d[1]].type = 1
-    
+                update()
+                #time.sleep(0.1)
+    '''
 
-    maze[0][0].type  = 2
-    maze[-1][-1].type  = 3
+    start.type  = 2
+    goal.type  = 3
     return maze
 
 
 #solve maze
 openQ  = {}
-openQ[0] = grid[0][0]
+openQ[0] = start
 closedQ = set()
 
 def solveMaze():
     global openQ
     global closedQ
     openQ  = {}
-    openQ[0] = grid[0][0]
+    openQ[0] = start
     closedQ = set()
 
     while len(openQ) > 0 :
@@ -104,9 +225,8 @@ def solveMaze():
     #draw
 
 def markPath(g):
-    u = g[-1][-1]
+    u = goal
     while u.vorgänger is not None:
-        print(u.vorgänger)
         u.type = 4
         u = u.vorgänger
 
@@ -139,7 +259,7 @@ def expandNode(n):
             openQ[f] = s
 
 def getH(n):
-    a = (len(grid) - n.y) + (len(grid[0]) - n.x)
+    a = abs((goal.y - n.y)) + abs((goal.x - n.x))
     return a
 
 def getSucc(n):
@@ -198,10 +318,13 @@ def update():
 
 def main():
     global grid
+    global start
+    global goal
     run = True
     spam = False
     update()
-    grid = generate(grid)
+    goal.type = 3
+    t = 0
     
     while run:
         for event in pygame.event.get():
@@ -215,20 +338,51 @@ def main():
                     solveMaze()
                 elif e == K_n:
                     grid = generate(grid)
-               
+                elif e == K_r:
+                    spam = not spam
+                elif e == K_0:
+                    t = 0
+                elif e == K_1:
+                    t = 1
+                elif e == K_2:
+                    t = 2
+                elif e == K_3:
+                    t = 3
                 
 
             elif event.type == pygame.QUIT:
                 run = False
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+
+            elif (event.type == pygame.MOUSEBUTTONUP and event.button == 1):
                 pos =  pygame.mouse.get_pos()
                 gx = pos[0]//scale
                 gy = pos[1]//scale
                 if gx in range(SCREEN_WIDTH) and gy in range(SCREEN_HEIGHT):
-                    grid[gy][gx].type  += 1
-                    grid[gy][gx].type  %= 2
-                
+                    grid[gy][gx].type  = t
+                    if t == 3:
+                        grid[goal.y][goal.x].type = 0
+                        goal = grid[gy][gx]
+                    if t == 2:
+                        grid[start.y][start.x].type = 0
+                        start = grid[gy][gx]
+                        openQ[0] = start
+                    
+        if spam:
+            pos =  pygame.mouse.get_pos()
+            gx = pos[0]//scale
+            gy = pos[1]//scale
+            if gx in range(SCREEN_WIDTH) and gy in range(SCREEN_HEIGHT):
+                grid[gy][gx].type  = t
+                if t == 3:
+                    grid[goal.y][goal.x].type = 0
+                    goal = grid[gy][gx]
+                if t == 2:
+                    grid[start.y][start.x].type = 0
+                    start = grid[gy][gx]
+                    openQ[0] = start
 
+                
+            
 
         update()
                 

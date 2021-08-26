@@ -8,6 +8,6 @@ from queue import PriorityQueue
 
 
 
-
-print(41//2)
+s = "10100101"
+print(chr(int(s,2)))
 
