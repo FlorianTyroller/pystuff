@@ -35,6 +35,8 @@ CENTER = (SCREEN_WIDTH//2, SCREEN_HEIGHT//2)
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+#functions = [lambda a : math.sin(a)]
+
 #functions = [lambda a : math.sin(a),lambda a : math.cos(a),lambda a : math.tan(a)]
 
 #functions = [lambda a : a,lambda a : 2*a,lambda a : 3*a]
@@ -47,7 +49,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 #functions = [lambda a : math.sin(a),lambda a : math.cos(a),lambda a : math.tan(a)]
 
-functions = [lambda a : math.sin(a),lambda a : math.sin(a*4)*2]
+#functions = [lambda a : math.sin(a),lambda a : math.sin(a*4)*2]
 
 def f(x):
     #return math.sin(x)
