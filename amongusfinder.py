@@ -81,7 +81,7 @@ def main():
     for a in amogi:
         a = list(a)
         try:
-            a.remove("x")#
+            a.remove("x")
         except Exception:
             None
 

@@ -15,6 +15,7 @@ def drawCards(number):
             cards.remove(o)
     return c
 
+
 def getHandValue(h):
     if len(h)>0:
         value = [0]

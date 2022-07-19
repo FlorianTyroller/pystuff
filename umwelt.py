@@ -16,10 +16,10 @@ topics = [us,nachhaltig,schadstoffe,klimaenergie,imission,abwasser,trinkwasser,b
 
 qs = sum(len(t) for t in topics)
 
-
-
-q = random.choices([random.choice(t) for t in topics], weights=[len(t) for t in topics])
-print(q)
+e = defaultdict(int)
+for i in range(118203):
+    e[random.choices([random.choice(t) for t in topics], weights=[len(t) for t in topics])] += 1
+print(e.keys())
 
 
 
