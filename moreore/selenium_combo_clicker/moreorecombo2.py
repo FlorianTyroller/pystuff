@@ -17,7 +17,7 @@ driver.implicitly_wait(0)
 
 time.sleep(4)
 
-save_file = "C:/Users/Flori/Desktop/moreore/latest_save.txt"
+save_file = "C:/Users/Flori/Desktop/pypy/moreore/selenium_combo_clicker/latest_save.txt"
 
 def check_exists_by_CSS(css):
     try:

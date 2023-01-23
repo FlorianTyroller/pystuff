@@ -1,0 +1,66 @@
+osu file format v14
+
+[General]
+AudioFilename: audio.ogg
+AudioLeadIn: 0
+PreviewTime: 1000
+Countdown: 0
+SampleSet: Soft
+StackLeniency: 0.7
+Mode: 3
+LetterboxInBreaks: 0
+SpecialStyle: 0
+WidescreenStoryboard: 1
+
+[Editor]
+DistanceSpacing: 1
+BeatDivisor: 4
+GridSize: 4
+TimelineZoom: 2.6
+
+[Metadata]
+Title:Test
+TitleUnicode:TestGenerated
+Artist:Tyt
+ArtistUnicode:Tyt
+Creator:Tyt
+Version:TetDiff 1
+Source:OG
+Tags:OG
+BeatmapID:0
+BeatmapSetID:0
+
+[Difficulty]
+HPDrainRate:5
+CircleSize:4
+OverallDifficulty:5
+ApproachRate:5
+SliderMultiplier:1.4
+SliderTickRate:1
+
+[Events]
+//Background and Video events
+0,0,"bg.jpg",0,0
+
+
+[TimingPoints]
+0,500,4,2,0,100,1,0
+
+
+[HitObjects]
+320,192,442,1,0,1:0:0:0:
+192,192,578,1,0,1:0:0:0:
+448,192,578,7,0,3910,0:0:0:
+64,192,578,7,0,9186,0:0:0:
+320,192,578,7,0,4529,0:0:0:
+320,192,6009,1,0,1:0:0:0:
+448,192,6251,1,0,1:0:0:0:
+320,192,6748,1,0,1:0:0:0:
+192,192,6942,1,0,1:0:0:0:
+448,192,7427,1,0,1:0:0:0:
+320,192,7427,7,0,12204,0:0:0:
+192,192,10593,1,0,1:0:0:0:
+192,192,10810,1,0,1:0:0:0:
+448,192,11150,1,0,1:0:0:0:
+448,192,11381,1,0,1:0:0:0:
+64,192,11757,1,0,1:0:0:0:

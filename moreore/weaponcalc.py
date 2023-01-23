@@ -146,11 +146,25 @@ def main():
     # plot_sword_by_rarities(404, "diamond")
     # plot_sword_by_materials(404, "mythic")
     # plot_sword_by_level(404)
-    plot_sword_group_by_material(404)
+    # plot_sword_group_by_material(404)
     # plot_sword_group_by_rarity(404)
-    
+    # plot_sword_by_level(404)
+    # plot_sword_by_materials(412, "mythic")
+    plot_sword(402, "stone", "mythic")
 
-    
+def plot_sword(item_lvl, item_material, item_rarity):
+    vs = []
+    rs = []
+    simulation_count = 1000000
+    bin_count = 1000
+    for i in range(simulation_count):
+        vs.append(gen_random_attack_for_sword(item_rarity, item_material, item_lvl))
+
+
+    plt.hist(vs, bins=bin_count, alpha=0.5, label=item_material + " " + item_rarity)
+    plt.legend(loc='upper right')
+    plt.show()
+
 def plot_sword_by_rarities(item_lvl, item_material):
     vs = []
     rs = []
