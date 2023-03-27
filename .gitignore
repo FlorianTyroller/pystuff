@@ -9,3 +9,5 @@
 *.asy
 *.pdf
 *.html
+face/data
+face/dataset.py
