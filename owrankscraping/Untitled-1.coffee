@@ -1,3 +1,0 @@
-champs1:  {'ashe': 14, 'bastion': 5, 'cass': 9, 'echo': 16, 'genji': 14, 'hanzo': 16, 'junk': 33, 'mei': 7, 'pharah': 11, 'reaper': 2, 's76': 16, 'sojourn': 222, 'sombra': 0, 'sym': 15, 'torb': 15, 'tracer': 62, 'widow': 43}
-champs2:  {'ashe': 38, 'bastion': 12, 'cass': 25, 'echo': 14, 'genji': 16, 'hanzo': 18, 'junk': 13, 'mei': 3, 'pharah': 10, 'reaper': 4, 's76': 25, 'sojourn': 88, 'sombra': 2, 'sym': 2, 'torb': 18, 'tracer': 102, 'widow': 100}
-champs3:  {'ashe': 62, 'bastion': 12, 'cass': 21, 'echo': 35, 'genji': 25, 'hanzo': 32, 'junk': 15, 'mei': 4, 'pharah': 7, 'reaper': 6, 's76': 34, 'sojourn': 45, 'sombra': 2, 'sym': 5, 'torb': 16, 'tracer': 91, 'widow': 69}

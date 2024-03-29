@@ -12,14 +12,31 @@
 *.spec
 *.cache
 *.env
+*.xml
+*.pkl
 projects/face/data/
 projects/face/dataset.py
 spell_env/
 projects/infinitecraft/selenium
 remoteHomeserver/
 tools/moreore/moreore/
+tools/albiononline/
 __pycache__/
 .vscode/
 build/
 disct/
+node_modules/
+swebsite/
 
+projects/infinitecraft/nealfun.js
+projects/infinitecraft/seleniumexploit/
+selenium/First Run
+.gitignore
+tools/leagueoflegends/lcu/yarn.lock
+tools/leagueoflegends/lol/riftexplorer/yarn.lock
+tools/leagueoflegends/lolapi/puuidfinder.py
+tools/legendofcodemagic/codemagic/cardlist.csv
+tools/legendofcodemagic/codemagic/cardratings.csv
+tools/overwatch/owrankscraping/Untitled-1.coffee
+tools/spotify/spoti.py
+tools/youtube/ytapi/ytscraper.py
