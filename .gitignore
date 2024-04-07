@@ -17,7 +17,11 @@
 projects/face/data/
 projects/face/dataset.py
 spell_env/
-projects/infinitecraft/selenium
+tools/infinitecraft/selenium
+tools/infinitecraft/seleniumexploit
+tools/infinitecraft/seleniumexploitdb
+tools/infinitecraft/selneiumexploit
+tools/infinitecraft/seleniumexploitdbhl
 remoteHomeserver/
 tools/moreore/moreore/
 tools/albiononline/

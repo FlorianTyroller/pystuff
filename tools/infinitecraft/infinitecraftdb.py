@@ -14,8 +14,8 @@ conn = mysql.connector.connect(
     password='root',
     database='infinitecraft'
 )
-COUNTER_FILE = "projects/infinitecraft/counter_file.json"
-PROXY_FILE = "projects/infinitecraft/proxies.json"
+COUNTER_FILE = "tools/infinitecraft/counter_file.json"
+PROXY_FILE = "tools/infinitecraft/proxies.json"
 proxy_list = {}
 
 
@@ -103,21 +103,21 @@ def req_combination(params):
     base_url = "https://neal.fun/api/infinite-craft/pair"
     headers = {
         "Referer": "https://neal.fun/infinite-craft/",
-        "User-Agent": ua.random,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
         "Connection": "keep-alive"
     }
 
 
     while True:  # Loop to handle potential proxy failures
         try:
-            """# random choice with weight
+            # random choice with weight
             proxy = random.choices(population=list(proxy_list.keys()), weights=list(proxy_list.values()), k=1)[0]
             if proxy == "no proxy":
                 proxies = None
             else:
                 proxies = {
                     'https://': proxy  # Format the proxy for httpx
-                }"""
+                }
 
 
             #with httpx.Client(proxies=proxies, verify=True) as client:
