@@ -179,6 +179,7 @@ def selenium_cookies_to_requests(cookies):
 
     # Commit the changes
     conn.commit()
+    print("inserted Cookies")
 
     return requests_cookies
 

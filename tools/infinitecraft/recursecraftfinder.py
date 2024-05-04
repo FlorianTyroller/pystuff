@@ -83,7 +83,7 @@ def get_crafting_chain_depth(chain):
 
 if __name__ == "__main__":
     cursor = connection.cursor()
-    q = "select id from elements"
+    q = "select id from elements where id > 3000"
     max_iterations = 100
     cursor.execute(q)
 

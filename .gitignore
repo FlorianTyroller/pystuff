@@ -14,6 +14,8 @@
 *.env
 *.xml
 *.pkl
+*.mp3
+projects/authbruteforce/SecLists-master
 projects/face/data/
 projects/face/dataset.py
 spell_env/
@@ -21,6 +23,7 @@ tools/infinitecraft/selenium
 tools/infinitecraft/seleniumexploit
 tools/infinitecraft/seleniumexploitdb
 tools/infinitecraft/selneiumexploit
+tools/infinitecraft/seleniumexploit3
 tools/infinitecraft/seleniumexploitdbhl
 remoteHomeserver/
 tools/moreore/moreore/
@@ -44,3 +47,5 @@ tools/legendofcodemagic/codemagic/cardratings.csv
 tools/overwatch/owrankscraping/Untitled-1.coffee
 tools/spotify/spoti.py
 tools/youtube/ytapi/ytscraper.py
+projects/authbruteforce/reqbrute.py
+projects/discordaivoicebot/outpute.mp3
