@@ -88,13 +88,13 @@ class Board:
         edges_d = {}
         for e in d['Edges']:
             edge = Edge.from_dict(e)
-            k = Tuple(edge.tile1_coord, edge.tile2_coord)
+            k = tuple((edge.tile1_coord, edge.tile2_coord))
             edges_d[k] = edge
 
         corners_d = {}
         for c in d['Corners']:
             corner = Corner.from_dict(c)
-            k = Tuple(corner.tile1_coord, corner.tile2_coord, corner.tile3_coord)
+            k = tuple((corner.tile1_coord, corner.tile2_coord, corner.tile3_coord))
             corners_d[k] = corner
 
         return Board(tiles=tiles_d, edges=edges_d, corners=corners_d)

@@ -7,6 +7,8 @@ from tkinter import Canvas, Text, Scrollbar
 import socket
 import threading
 import json
+import math
+from pathlib import Path
 from PIL import Image, ImageTk
 
 from board.board import Board
@@ -197,7 +199,7 @@ class Lobby(ctk.CTkFrame):
     def __init__(self, master, controller):
         super().__init__(master)
         self.controller = controller
-        self.geometry = "600x400"
+        self.geometry = "650x400"
 
         self.grid_columnconfigure(1, weight=1)  # Gives the chat display more room to expand
         self.grid_rowconfigure(1, weight=1)  # Allows the chat and participants list to expand
@@ -268,27 +270,30 @@ class Game(ctk.CTkFrame):
         self.img_refs = set()
         self.playerdict = None
         self.board = None
+        self.size = 50
+        self.base_dir = Path(__file__).resolve().parent  # Adjust the traversal according to your project structure
+
 
         # Set the grid configuration
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, minsize=120)  # Row for various controls
         for i in range(8):
             if i < 7:
-                self.grid_columnconfigure(i, weight=1)
+                self.grid_columnconfigure(i, weight=1, minsize=100)  # More weight to game canvas columns
             else:
-                self.grid_columnconfigure(i, minsize=50)  # Column for chat log
+                self.grid_columnconfigure(i, weight=0)  # Less weight to chat column, previously minsize=50
 
         # Main game canvas
         self.canvas = Canvas(self, bg='white')
-        self.canvas.grid(row=0, column=0, columnspan=7, rowspan=6, sticky="nsew")
+        self.canvas.grid(row=0, column=0, columnspan=7, rowspan=6, sticky="nsew")  # Ensure it spans most columns
 
         # In-game chat log
         self.chat_log = Text(self, bg="lightgrey", state='disabled', wrap="word")
-        self.chat_log.grid(row=0, column=7, rowspan=7, sticky="nsew")
+        self.chat_log.grid(row=0, column=7, rowspan=7, sticky="nsew")  # Only on the last column
 
         # Scrollbar for chat log
         chat_scrollbar = Scrollbar(self, command=self.chat_log.yview)
-        chat_scrollbar.grid(row=0, column=8, rowspan=7, sticky='nse')
+        chat_scrollbar.grid(row=0, column=8, rowspan=7, sticky='nse')  # Right next to chat log
         self.chat_log.config(yscrollcommand=chat_scrollbar.set)
 
         # Various game controls (e.g., buttons for game actions)
@@ -297,49 +302,46 @@ class Game(ctk.CTkFrame):
         example_button = ctk.CTkButton(self.game_controls, text="Action Button", command=self.some_game_action)
         example_button.pack(pady=10, padx=10)
 
-    def hex_to_pixel(coord, size, xoffset, yoffset):
+    def hex_to_pixel(self, coord, xoffset, yoffset):
         q, r = coord
-        x = size * (math.sqrt(3) * q + math.sqrt(3)/2 * r) + xoffset  # Horizontal distance combining q and r
-        y = - size * (3/2 * r) + yoffset  # Vertical distance using r only
+        x = self.size * (math.sqrt(3) * q + math.sqrt(3)/2 * r) + xoffset  # Horizontal distance combining q and r
+        y = - self.size * (3/2 * r) + yoffset  # Vertical distance using r only
 
         return x, y
 
     def render_board(self):
         self.img_refs = set()
-        w = self.canvas.winfo_width()
-        h = self.canvas.winfo_height()
-        size = 50
-        self.draw_board(width=w, height=h, background='blue')
+        w = 800
+        h = 800
+        
+        self.draw_board(w // 2, h // 2)
 
-    def draw_board(self, width, height, background):
-        self.draw_tiles(size, xoffset, yoffset)
-        self.draw_edges(size, xoffset, yoffset)
-        self.draw_corners(size, xoffset, yoffset)
+    def draw_board(self, xoffset, yoffset):
+        self.draw_tiles(xoffset, yoffset)
+        self.draw_edges(xoffset, yoffset)
+        self.draw_corners(xoffset, yoffset)
 
-    def draw_corners(size, xoffset, yoffset):
+    def draw_corners(self, xoffset, yoffset):
         for corner in self.board.corners.values():
             # Assuming corner is an object with a method get_coords that returns coordinates
             corner_coords = corner.get_coords()
-            x, y = hex_to_pixel(corner_coords, size, xoffset, yoffset)
+            x, y = self.hex_to_pixel(corner_coords, xoffset, yoffset)
 
             if corner.building == 'settlement':
-                path = f"/catan/assets/pngs/settlements/settlement_{self.player_colors[corner.owner_id]}.png"
-                self.place_image_on_canvas(canvas, path, x, y, size, size, 0.5)
-            elif corner.building == 'city':
-                path = f"/catan/assets/pngs/cities/city_{self.player_colors[corner.owner_id]}.png"
-                self.place_image_on_canvas(canvas, path, x, y, size, size, 0.5)
+                path = f"{self.base_dir}/assets/pngs/cities/city_{self.player_colors[corner.owner_id]}.png"
+                self.place_image_on_canvas( path, x, y, self.size, self.size, 0.5)
             else:
-                canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white')
+                self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white')
 
-    def draw_edges(size, xoffset, yoffset):
+    def draw_edges(self, xoffset, yoffset):
         for edge_k in self.board.edges:
             if self.board.edges[edge_k].is_available():
                 continue
-            start_pixel = hex_to_pixel(edge_k[0], size, xoffset, yoffset)
-            end_pixel = hex_to_pixel(edge_k[1], size, xoffset, yoffset)
-            self.draw_edge(start_pixel, end_pixel, size)
+            start_pixel = self.hex_to_pixel(edge_k[0], xoffset, yoffset)
+            end_pixel = self.hex_to_pixel(edge_k[1], xoffset, yoffset)
+            self.draw_edge(start_pixel, end_pixel)
 
-    def draw_edge(start, end, size, color = None):
+    def draw_edge(self, start, end, color = None):
         # Calculate midpoint
         #print(start, end)
         mid_x = (start[0] + end[0]) / 2
@@ -351,26 +353,26 @@ class Game(ctk.CTkFrame):
             angle_deg = -60
         else:
             angle_deg = 60 
-        path = f"/catan/assets/pngs/roads/road_blue.png"
-        self.place_image_on_canvas(path, mid_x, mid_y, size, size, 0.6, rotation=angle_deg)
+        path = f"{self.base_dir}/assets/pngs/roads/road_blue.png"
+        self.place_image_on_canvas(path, mid_x, mid_y, self.size, self.size, 0.6, rotation=angle_deg)
 
-    def draw_tiles(size, xoffset, yoffset):
+    def draw_tiles(self, xoffset, yoffset):
         for tile in self.board.tiles.values():
-            x, y = hex_to_pixel(tile.get_coords(), size, xoffset, yoffset)
-            self.draw_tile(x, y, size, tile.resource, tile.number)
+            x, y = self.hex_to_pixel(tile.get_coords(), xoffset, yoffset)
+            self.draw_tile(x, y, tile.resource, tile.number)
 
-    def draw_tile(x, y, size, r_type, number = None):
+    def draw_tile(self, x, y, r_type, number = None):
         scale = 2
         # Create hexagon points
-        path = f"/catan/assets/pngs/tiles/tile_{r_type}.png"
-        self.place_image_on_canvas(path, x, y, 0.866 * size, size, scale)
+        path = f"{self.base_dir}/assets/pngs/tiles/tile_{r_type}.png"
+        self.place_image_on_canvas(path, x, y, 0.866 * self.size, self.size, scale)
         # Calculate text positioning and draw text
         text_y_offset = 20  # Vertical offset for the second text line
         self.canvas.create_text(x, y, text=r_type, fill='white', font=('Helvetica', '12', 'bold'))
         if number:
             self.canvas.create_text(x, y + text_y_offset, text=number, fill='white', font=('Helvetica', '12', 'bold'))
 
-    def place_image_on_canvas(path, x, y, width, height, scale, rotation = 0):
+    def place_image_on_canvas(self, path, x, y, width, height, scale, rotation = 0):
         height = int(scale*height)
         width = int(scale*width)
 
@@ -398,6 +400,7 @@ class Game(ctk.CTkFrame):
 
     def update_board(self, board_d):
         self.board = Board.from_dict(board_d)
+        self.render_board()
     
     def update_player(self, player):
         self.playerdict = player_d 

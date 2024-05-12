@@ -40,7 +40,10 @@ class Corner:
         return d
 
     def from_dict(d):
-        coords1 = Tuple(int(d['coords1'][0]),int(d['coords1'][1]))
-        coords2 = Tuple(int(d['coords2'][0]),int(d['coords2'][1]))
-        coords3 = Tuple(int(d['coords3'][0]),int(d['coords3'][1]))
-        return Corner(tile_coord1=coords1, tile_coord2=coords2, tile_coord3=coords3, owner_id=int(d['owner_id']), building=d['building'])
+        coords1 = tuple((int(d['coords1'][0]),int(d['coords1'][1])))
+        coords2 = tuple((int(d['coords2'][0]),int(d['coords2'][1])))
+        coords3 = tuple((int(d['coords3'][0]),int(d['coords3'][1])))
+        owner_id_d = d['owner_id']
+        if owner_id_d is not None:
+            owner_id_d = int(owner_id_d)
+        return Corner(tile1_coord=coords1, tile2_coord=coords2, tile3_coord=coords3, owner_id=owner_id_d, building=d['building'])

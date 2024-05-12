@@ -25,6 +25,9 @@ class Edge:
         return d
 
     def from_dict(d):
-        coords1 = Tuple(int(d['coords1'][0]),int(d['coords1'][1]))
-        coords2 = Tuple(int(d['coords2'][0]),int(d['coords2'][1]))
-        return Edge(tile_coord1=coords1, tile_coord2=coords2, owner_id=int(d['owner_id']))
+        coords1 = tuple((int(d['coords1'][0]),int(d['coords1'][1])))
+        coords2 = tuple((int(d['coords2'][0]),int(d['coords2'][1])))
+        owner_id_d = d['owner_id']
+        if owner_id_d is not None:
+            owner_id_d = int(owner_id_d)
+        return Edge(tile1_coord=coords1, tile2_coord=coords2, owner_id=owner_id_d)

@@ -7,6 +7,7 @@ import math
 import random
 import threading
 import time
+import json
 
 from typing import Tuple, List
 from PIL import Image, ImageTk
@@ -24,14 +25,15 @@ class Game:
         self.allowed_commands = {
             0: ["roll"], 1: ["build", "end"], 2: ["roll", "build", "trade", "use", "end"]
         }
-        for i,client in enumerate(clients):
-            new_player = Player(str(i), i, self.config, client, self.states[i])
-            self.players[client.getpeername()] = new_player
+        for i,p in enumerate(self.participants):
+            new_player = Player(str(i), i, self.config, p,self.participants[p][1])
+            self.players[i] = new_player
 
 
     def run(self):
         
-        # Phase 0
+        self.broadcast('update_board',self.board.to_dict())
+        """# Phase 0
         self.gamephase = 0
         self.broadcast("Phase 0: Auswürfeln wer anfängt")
         self.phase_zero()
@@ -39,7 +41,7 @@ class Game:
         # Phase 1 
         self.gamephase = 1
         self.broadcast("Phase 1: Platzieren der ersten Siedlungen und Straßen")
-        self.phase_one()
+        self.phase_one()"""
 
     def process_command(self, client_socket, command):
         if command == "help":
@@ -106,15 +108,20 @@ class Game:
         for state in self.states:
             state.state = "in_game"
 
-    def broadcast(self, message):
-        for client in self.clients:
-            client.sendall(message.encode('utf-8'))
+    def broadcast(self, mtype,  message):
+        json_m = json.dumps({'type': mtype, 'content': message}) + '\n'
+        encoded_json = json_m.encode('utf-8')
+        for client in self.participants:
+            client.sendall(encoded_json)
+
 
 
 
 
 def main(): # start game
-    pass
+    return
+    board = Board(config=standard_board_config)
+    print(board.to_dict())
 
 
 

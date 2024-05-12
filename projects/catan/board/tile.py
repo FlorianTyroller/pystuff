@@ -15,8 +15,11 @@ class Tile:
         return d
 
     def from_dict(d):
-        coords1 = Tuple(int(d['coords1'][0]),int(d['coords1'][1]))
-        return Tile(tile_coord=coords1, resource=d['resource'], number=int(d['number']))
+        coords1 = tuple((int(d['coords1'][0]),int(d['coords1'][1])))
+        number_d = d['number']
+        if number_d is not None:
+            number_d = int(number_d)
+        return Tile(tile_coord=coords1, resource=d['resource'], number=number_d)
         
     def get_coords(self):
         return self.coord
