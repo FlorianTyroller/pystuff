@@ -61,25 +61,25 @@ standard_board_config = {
         }
     },
     'resources': 
-                ['ore', 'lumber', 'grain',
-            'grain', 'wool', 'wool', 'ore', 'grain', 
-          'ore', 'brick', 'brick', 'lumber', 'grain', 'grain', 'lumber', 'grain', 'grain',
-            'wool', 'ore', 'brick', 'desert', 
-                'lumber', 'grain', 'wool'],
+                [
+                'ore', 'lumber', 'grain',
+                'wool','brick', 'wool',
+                'ore', 'lumber', 'grain',
+                ],
 
     'numbers': 
-            [11, 8, 9, 
-            4, 5, 6, 3, 2,
-         11, 12, 2, 6, 4, 10,1,1,1,
-           9, 11, 10, None, 
-              3, 5, 8],
+            [
+            8,8,8,
+            8,8,8,
+            8,8,8,
+            ],
 
     'layout': 
-                [(-2,2),(-1,2),(0,2),
-            (-2,1),(-1,1),(0,1),(1,1), (2,1),
-          (-2,0),(-1,0),(0,0),(1,0),(2,0),(3,0),(4,0),(5,0),(6,0), 
-            (-1,-1),(0,-1),(1,-1),(2,-1),
-               (0,-2),(1,-2),(2,-2)]
+                [
+                (-1,1),(0,1),(1,1), 
+                (-1,0),(0,0),(1,0), 
+                (-1,-1),(0,-1),(1,-1)
+                ]
 }
 
 standard_board_config_big = {

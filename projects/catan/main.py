@@ -12,10 +12,9 @@ from typing import Tuple, List
 from PIL import Image, ImageTk
 
 class Game:
-    def __init__(self, clients, states):
+    def __init__(self, participants):
+        self.participants = participants # key = client, value = (name, state)
         self.gamephase = 0
-        self.clients = clients
-        self.states = states
         self.config = standard_board_config
         self.starting_player = None
         self.board = Board(self.config)
@@ -32,11 +31,15 @@ class Game:
 
     def run(self):
         
-        if self.gamephase == 0:
-            for state in self.states:
-                state.set_commands(self.allowed_commands[self.gamephase])
-            self.phase_zero()
-        # Additional phases would be handled here
+        # Phase 0
+        self.gamephase = 0
+        self.broadcast("Phase 0: Auswürfeln wer anfängt")
+        self.phase_zero()
+        
+        # Phase 1 
+        self.gamephase = 1
+        self.broadcast("Phase 1: Platzieren der ersten Siedlungen und Straßen")
+        self.phase_one()
 
     def process_command(self, client_socket, command):
         if command == "help":
@@ -51,36 +54,50 @@ class Game:
     def handle_roll(self, client_socket):
         # Logic to handle a dice roll
         roll_result = random.randint(1, 6)
+        self.players[client_socket.getpeername()].state.set_commands([])
         self.broadcast(f"Player {client_socket.getpeername()} rolled a {roll_result}")
+        self.lock.acquire()
+        self.dice_rolls[client_socket.getpeername()] = roll_result
+        self.lock.release()
 
     def phase_zero(self):
+        for state in self.states:
+            state.set_commands(self.allowed_commands[self.gamephase])
         # Ask each player to roll the dice
         for client in self.clients:
             self.ask_for_dice_roll(client)
 
         # Wait for all players to roll the dice
         while len(self.dice_rolls) < len(self.clients):
-            time.sleep(0.1)  # Avoid busy waiting
+            time.sleep(0.5)  # Avoid busy waiting
 
         # Determine who had the highest roll
         self.starting_player = max(self.dice_rolls, key=self.dice_rolls.get)
         self.current_player = self.starting_player
-        print(f"The starting player is {self.starting_player}")
+        self.broadcast(f"The starting player is {self.starting_player}")
 
-        # Move to the next phase
-        self.gamephase = 1
+    def phase_one(self):
+        player_order = []
+        for i in range(len(self.players)):
+            player_order.append(i)
+        player_order += player_order[::-1]
+
+        while len(player_order) > 0:
+            current_player_id = player_order.pop()
+            self.current_player = self.players[list(self.players.keys())[current_player_id]]
+            
+            # player is allowed to build, 1. settlement then 1 road
+            self.current_player.client.sendall("Place your first settlement".encode('utf-8'))
+            valid_pos = self.current_player.get_valid_corner_pos(self.board.corners)
+            self.current_player.client.sendall("Valid Positions:".encode('utf-8'))
+            for i,pos in enumerate(valid_pos):
+                self.current_player.client.sendall(f"{i}: pos: {pos}".encode('utf-8'))
 
     def ask_for_dice_roll(self, client):
         # Send a message to the client asking for a dice roll
         message = "Please roll the dice (type 'roll')."
         client.sendall(message.encode('utf-8'))
-                
-        # Wait for client response, here assuming response handled elsewhere
-        # Simulate dice roll response for now
-        roll = self.simulate_dice_roll()
-        self.lock.acquire()
-        self.dice_rolls[client] = roll
-        self.lock.release()
+
 
     def simulate_dice_roll(self):
         return random.randint(1, 6)  # Simulate a dice roll

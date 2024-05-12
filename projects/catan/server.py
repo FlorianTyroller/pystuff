@@ -1,71 +1,75 @@
 import socket
 import threading
 import time
+import json
+import logging
 
 from main import Game
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(threadName)s] %(levelname)s: %(message)s')
+
 class Lobby:
-    def __init__(self, name):
+    def __init__(self, name, l_id):
+        self.l_id = l_id
         self.is_joinable = True
         self.name = name
-        self.clients = []
-        self.states = []
+        self.participants = {} # key = client, value = (name, state)
         self.game = None
 
-    def add_client(self, client_socket, state):
+    def get_info(self):
+        info = dict()
+        info['id'] = self.l_id
+        info['name'] = self.name
+        names = []
+        for p in self.participants.values():
+            names.append(p[0])
+        info['participants'] = names
+
+        return info
+
+    def add_client(self, client_socket, state, name):
         if not self.is_joinable:
             return False
-        self.clients.append(client_socket)
-        self.states.append(state)
-        print(f"Added client to {self.name}. Total clients: {len(self.clients)}")
-        self.broadcast(f"a client joined the lobby, there are {len(self.clients)} in the lobby")
+        self.participants[client_socket] = (name, state)
+        self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f'{name} joined the lobby'})
         return True
 
     def remove_client(self, client_socket, state):
-        self.clients.remove(client_socket)
-        self.state.remove(state)
-        print(f"Client left {self.name}. Remaining clients: {len(self.clients)}")
-        self.broadcast(f"a client left the lobby, there are {len(self.clients)} in the lobby")
+        self.participants.pop(client_socket)
+        self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f'{name} left the lobby'})
         return len(self.clients)
 
     def start_game(self):
         self.is_joinable = False
-        self.broadcast(f"starting game with {len(self.clients)} players in 5 seconds")
+        self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f'Starting Game in 5 Seconds'})
         for i in range(5):
-            self.broadcast(f"{5-i}..")
+            self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f"{5-i}.."})
             time.sleep(1)
+        
+        self.broadcast('show_game', None)
         self.update_player_states()
-        self.game = Game(self.clients, self.states)
+        self.game = Game(self.participants)
         game_thread = threading.Thread(target=self.game.run)
         game_thread.start()
 
     def update_player_states(self):
-        for state in self.states:
-            state.state = "in_game"
+        for p in self.participants.values():
+            p[1].state = "in_game"
 
-    def broadcast(self, message):
-        for client in self.clients:
-            client.sendall(message.encode('utf-8'))
+    def broadcast(self, mtype,  message):
+        json_m = json.dumps({'type': mtype, 'content': message}) + '\n'
+        encoded_json = json_m.encode('utf-8')
+        for client in self.participants:
+            client.sendall(encoded_json)
 
 class ClientState:
     def __init__(self):
-        self.current_lobby = None
         self.state = "no_lobby"
         self.commands = {
             "no_lobby": ["create", "join", "list", "exit"],
             "in_lobby": ["leave", "start", "list", "exit"],
             "in_game": []
         }
-
-    def join_lobby(self, lobby):
-        self.current_lobby = lobby
-        self.state = "in_lobby"
-
-    def leave_lobby(self):
-        old_lobby = self.lobby
-        self.lobby = None
-        self.state = "no_lobby"
-        return old_lobby
 
     def set_commands(self, commands):
         self.commands[self.state] = commands 
@@ -79,72 +83,82 @@ class ClientState:
 
 class GameServer:
     def __init__(self, host, port):
+        self.current_lobby_id = 0
         self.host = host
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.lobbies = set()
+        self.lobbies = dict()
         self.client_states = {}
 
+    def send_response(self, client_socket, rtype, content):
+        msg = {'type': rtype, 'content': content}
+        json_message = json.dumps(msg) + '\n'
+        client_socket.sendall(json_message.encode('utf-8'))
+
+
     def handle_client(self, client_socket, address):
+        logging.info(f"Connected to {address}")
+        client_name = None
         state = ClientState()
         self.client_states[client_socket] = state
-        state.send_commands(client_socket)
+        
 
         try:
             while True:
                 message = client_socket.recv(1024).decode('utf-8')
-                args = message.split(" ")
+                message = json.loads(message)
+                logging.info(f"Received: {message}")
 
-                cmd = args[0]
-                args = args[1:]
-                
-                if cmd == "help": # universal command
-                    state.send_commands(client_socket)
+                if 'type' not in message:
+                    self.send_response(client_socket, "error", "key \"type\" not in msg")
                     continue
-                
+
                 if state.state == "in_game":
                     state.current_lobby.game.process_command(client_socket, message)
                     continue
+                if message['type'] == "set_name":
+                    client_name = message['content']
+                    self.send_response(client_socket,'show_menu', None)
+                
+                elif message['type'] == 'start_game':
+                    self.lobbies[message['content']].start_game()
 
-                if cmd in state.get_commands():
-                    client_socket.sendall(f"{cmd} is a valid command".encode('utf-8'))
-                    if cmd == "join":
-                        if args:
-                            for lobby in self.lobbies:
-                                if lobby.name == args[0]:
-                                    result = lobby.add_client(client_socket, state)
-                                    if result:
-                                        client_socket.sendall(f"joining lobby {args[0]}".encode('utf-8'))
-                                        state.join_lobby(lobby)
-                                    else:
-                                        client_socket.sendall(f"lobby {args[0]} is not joinable".encode('utf-8'))
-                                    
-                    elif cmd == "create":
-                        if args:
-                            for lobby in self.lobbies:
-                                if lobby.name == args[0]:
-                                    client_socket.sendall(f"lobby already exists, try join".encode('utf-8'))
-                                    break
-                            else:
-                                new_lobby = Lobby(args[0])
-                                new_lobby.add_client(client_socket, state)
-                                state.join_lobby(new_lobby)
-                                self.lobbies.add(new_lobby)
+                elif message['type'] == 'get_lobbies':
+                    lobbies_info = []
+                    if len(self.lobbies) > 0:
+                        for v in self.lobbies.values():
+                            lobbies_info.append(v.get_info())
+                    self.send_response(client_socket,'get_lobbies',lobbies_info)
+                
+                elif message['type'] == 'join_lobby':
+                    lobby_id = int(message['content'])
+                    self.lobbies[lobby_id].add_client(client_socket,state,client_name)
+                    #response
+                    self.send_response(client_socket, 'join_lobby', None)
+                    self.send_response(client_socket, 'lobby_info', self.lobbies[lobby_id].get_info())
 
-                    elif cmd == "leave":
-                        lobby = state.leave_lobby()
-                        lobby.remove_client(client_socket, state)
-                    
-                    elif cmd == "list":
-                        if len(self.lobbies) > 0:
-                            client_socket.sendall(f"Currently open Lobbies:".encode('utf-8'))
-                            for lobby in self.lobbies:
-                                client_socket.sendall(f"{lobby.name} with {len(lobby.clients)}".encode('utf-8'))
-                    
-                    elif cmd == "start":
-                        state.current_lobby.start_game()
+                elif message['type'] == 'create_lobby':
+                    # create lobby
+                    lobby_name = message['content']
+                    lobby_id = self.current_lobby_id
+                    self.current_lobby_id += 1
+                    newLobby = Lobby(lobby_name,lobby_id)
+                    self.lobbies[lobby_id] = newLobby
+
+                    # add client
+                    newLobby.add_client(client_socket,state,client_name)
+
+                    #response
+                    self.send_response(client_socket, 'join_lobby', None)
+                    self.send_response(client_socket, 'lobby_info', newLobby.get_info())
+    
+                elif message['type'] == 'send_lobby_chat':
+                    chat = message['content']['chat']
+                    lobby_id =  message['content']['lobby_id']
+                    self.lobbies[lobby_id].broadcast('recieve_lobby_chat', {'user': client_name, 'chat': chat})
+
                 else:
-                    client_socket.sendall(f"{cmd} is not a valid command, type \"help\" for a list of valid commands".encode('utf-8'))
+                    self.send_response(client_socket, "error", f"{cmd} is not a valid command, type \"help\" for a list of valid commands")
                 
         finally:
             """if state.current_lobby:

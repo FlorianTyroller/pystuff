@@ -31,3 +31,16 @@ class Corner:
         x /= 3
         
         return (x,y)
+
+    def to_dict(self):
+        d = {'owner_id': self.owner_id, 'building': self.building}
+        d['coords1'] = [self.tile1_coord[0], self.tile1_coord[1]]
+        d['coords2'] = [self.tile2_coord[0], self.tile2_coord[1]]
+        d['coords3'] = [self.tile3_coord[0], self.tile3_coord[1]]
+        return d
+
+    def from_dict(d):
+        coords1 = Tuple(int(d['coords1'][0]),int(d['coords1'][1]))
+        coords2 = Tuple(int(d['coords2'][0]),int(d['coords2'][1]))
+        coords3 = Tuple(int(d['coords3'][0]),int(d['coords3'][1]))
+        return Corner(tile_coord1=coords1, tile_coord2=coords2, tile_coord3=coords3, owner_id=int(d['owner_id']), building=d['building'])

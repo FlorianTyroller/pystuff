@@ -5,13 +5,19 @@ from board.edge import Edge
 from board.corner import Corner
 
 class Board:
-    def __init__(self, config: Dict[str, any] = standard_board_config) -> None:
+    def __init__(self, config: Dict[str, any] = standard_board_config, tiles = None, edges = None, corners = None) -> None:
         self.tiles: Dict[Tuple[int, int], Tile] = {}
         self.edges: Dict[Tuple[Tuple[int, int], Tuple[int, int]], Edge] = {}
         self.corners: Dict[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]], Corner] = {}
-        self.setup_tiles(config)
-        self.setup_edges()
-        self.setup_corners()
+        if tiles is None:
+            self.setup_tiles(config)
+            self.setup_edges()
+            self.setup_corners()
+        else:
+            self.tiles = tiles
+            self.edges = edges
+            self.corners = corners
+
 
     def setup_tiles(self, config: Dict[str, any]) -> None:
         resources: list = config['resources']
@@ -48,6 +54,53 @@ class Board:
                 corner_key = tuple(sorted((coord[0] + dx, coord[1] + dy) for dx, dy in offsets))
                 if corner_key not in self.corners:
                     self.corners[corner_key] = Corner(corner_key[0], corner_key[1], corner_key[2])
+
+    def to_dict(self):
+        board_dict = {}
+
+        # Tiles
+        tiles_list = []
+        for v in self.tiles.values():
+            tiles_list.append(v.to_dict())
+        board_dict['Tiles'] = tiles_list
+
+        # edges
+        edges_list = []
+        for v in self.edges.values():
+            edges_list.append(v.to_dict())
+        board_dict['Edges'] = edges_list
+
+        # corners
+        corners_list = []
+        for v in self.corners.values():
+            corners_list.append(v.to_dict())
+        board_dict['Corners'] = corners_list
+
+        return board_dict
+    
+    def from_dict(d):
+        tiles_d = {}
+        for t in d['Tiles']:
+            tile = Tile.from_dict(t)
+            k = tile.coord
+            tiles_d[k] = tile
+        
+        edges_d = {}
+        for e in d['Edges']:
+            edge = Edge.from_dict(e)
+            k = Tuple(edge.tile1_coord, edge.tile2_coord)
+            edges_d[k] = edge
+
+        corners_d = {}
+        for c in d['Corners']:
+            corner = Corner.from_dict(c)
+            k = Tuple(corner.tile1_coord, corner.tile2_coord, corner.tile3_coord)
+            corners_d[k] = corner
+
+        return Board(tiles=tiles_d, edges=edges_d, corners=corners_d)
+
+
+        
 
 
 
