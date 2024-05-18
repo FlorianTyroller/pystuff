@@ -64,14 +64,14 @@ standard_board_config = {
                 [
                 'ore', 'lumber', 'grain',
                 'wool','brick', 'wool',
-                'ore', 'lumber', 'grain',
+                'grain', 'lumber', 'wool',
                 ],
 
     'numbers': 
             [
-            8,8,8,
-            8,8,8,
-            8,8,8,
+            7,7,7,
+            7,7,7,
+            7,7,7,
             ],
 
     'layout': 

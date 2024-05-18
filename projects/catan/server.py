@@ -32,11 +32,13 @@ class Lobby:
             return False
         self.participants[client_socket] = (name, state)
         self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f'{name} joined the lobby'})
+        self.broadcast('lobby_info', self.get_info())
         return True
 
     def remove_client(self, client_socket, state):
         self.participants.pop(client_socket)
         self.broadcast('recieve_lobby_chat', {'user': 'Lobby', 'chat': f'{name} left the lobby'})
+        self.broadcast('lobby_info', self.get_info())
         return len(self.clients)
 
     def start_game(self):
@@ -100,6 +102,7 @@ class GameServer:
         logging.info(f"Connected to {address}")
         client_name = None
         state = ClientState()
+        c_lobby = None
         self.client_states[client_socket] = state
         
 
@@ -114,7 +117,8 @@ class GameServer:
                     continue
 
                 if state.state == "in_game":
-                    state.current_lobby.game.process_command(client_socket, message)
+                    if c_lobby is not None:
+                        c_lobby.game.process_command(client_socket, message)
                     continue
                 if message['type'] == "set_name":
                     client_name = message['content']
@@ -133,6 +137,7 @@ class GameServer:
                 elif message['type'] == 'join_lobby':
                     lobby_id = int(message['content'])
                     self.lobbies[lobby_id].add_client(client_socket,state,client_name)
+                    c_lobby = self.lobbies[lobby_id]
                     #response
                     self.send_response(client_socket, 'join_lobby', None)
                     self.send_response(client_socket, 'lobby_info', self.lobbies[lobby_id].get_info())
@@ -143,6 +148,7 @@ class GameServer:
                     lobby_id = self.current_lobby_id
                     self.current_lobby_id += 1
                     newLobby = Lobby(lobby_name,lobby_id)
+                    c_lobby = newLobby
                     self.lobbies[lobby_id] = newLobby
 
                     # add client

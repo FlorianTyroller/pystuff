@@ -4,6 +4,7 @@ from tkinter import ttk
 import tkinter.scrolledtext as ScrolledText
 from tkinter import Canvas, Text, Scrollbar
 
+import traceback
 import socket
 import threading
 import json
@@ -266,6 +267,10 @@ class Game(ctk.CTkFrame):
         super().__init__(master)
         self.controller = controller
         self.geometry = "1000x1000"
+        self.w = 800
+        self.h = 800
+        self.xoffset = self.w / 2
+        self.yoffset = self.h / 2
         self.player_colors = ["black", "blue", "green", "orange", "red", "white"]
         self.img_refs = set()
         self.playerdict = None
@@ -279,13 +284,19 @@ class Game(ctk.CTkFrame):
         self.grid_rowconfigure(1, minsize=120)  # Row for various controls
         for i in range(8):
             if i < 7:
-                self.grid_columnconfigure(i, weight=1, minsize=100)  # More weight to game canvas columns
+                self.grid_columnconfigure(i, weight=1, minsize=120)  # More weight to game canvas columns
             else:
-                self.grid_columnconfigure(i, weight=0)  # Less weight to chat column, previously minsize=50
+                self.grid_columnconfigure(i, weight=0,minsize=80)  # Less weight to chat column, previously minsize=50
 
         # Main game canvas
         self.canvas = Canvas(self, bg='white')
         self.canvas.grid(row=0, column=0, columnspan=7, rowspan=6, sticky="nsew")  # Ensure it spans most columns
+
+        self.canvas.bind("<Button-1>", self.scroll_start)
+        self.canvas.bind("<B1-Motion>", self.scroll_move)
+        # zoom disabled for now
+        # self.canvas.bind("<MouseWheel>", self.zoom) 
+
 
         # In-game chat log
         self.chat_log = Text(self, bg="lightgrey", state='disabled', wrap="word")
@@ -299,66 +310,131 @@ class Game(ctk.CTkFrame):
         # Various game controls (e.g., buttons for game actions)
         self.game_controls = ctk.CTkFrame(self)
         self.game_controls.grid(row=7, column=0, columnspan=7, sticky="nsew")
-        example_button = ctk.CTkButton(self.game_controls, text="Action Button", command=self.some_game_action)
-        example_button.pack(pady=10, padx=10)
 
-    def hex_to_pixel(self, coord, xoffset, yoffset):
+
+        # Creating a frame for the player ranking table on the left
+        self.rankings_frame = ctk.CTkFrame(self.game_controls)
+        self.rankings_frame.grid(row=0, column=0, padx=10, pady=10)
+
+        self.rankings_label = ctk.CTkLabel(self.rankings_frame, text="Rankings")
+        self.rankings_label.grid(row=0, column=0, columnspan=3)
+
+        self.rankings_headers = ["Name", "Points", "Cards"]
+        for col, header in enumerate(self.rankings_headers):
+            label = ctk.CTkLabel(self.rankings_frame, text=header)
+            label.grid(row=1, column=col)
+
+        # Example player data
+        self.players = [
+            {"name": "Player 1", "points": 10, "cards": 5},
+            {"name": "Player 2", "points": 8, "cards": 3},
+            {"name": "Player 3", "points": 12, "cards": 7}
+        ]
+
+        for row, player in enumerate(self.players, start=2):
+            name_label = ctk.CTkLabel(self.rankings_frame, text=player["name"])
+            name_label.grid(row=row, column=0)
+
+            points_label = ctk.CTkLabel(self.rankings_frame, text=player["points"])
+            points_label.grid(row=row, column=1)
+
+            cards_label = ctk.CTkLabel(self.rankings_frame, text=player["cards"])
+            cards_label.grid(row=row, column=2)
+
+        # Creating a frame for the player's resources in the middle
+        self.resources_frame = ctk.CTkFrame(self.game_controls)
+        self.resources_frame.grid(row=0, column=1, padx=10, pady=10)
+
+        # Creating a frame for the buttons on the right
+        self.buttons_frame = ctk.CTkFrame(self.game_controls)
+        self.buttons_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+        # End turn button
+        self.end_turn_button = ctk.CTkButton(self.buttons_frame, text="End Turn", command=self.end_turn, state='disabled')
+        self.end_turn_button.pack(pady=10, padx=10)
+
+        # Roll Dice Button (disabled by default)
+        self.roll_button = ctk.CTkButton(self.buttons_frame, text="Roll Dice", command=self.roll, state='disabled')
+        self.roll_button.pack(pady=10, padx=10)
+        
+        
+    def scroll_start(self, event):
+        self.canvas.scan_mark(event.x, event.y)
+
+    def scroll_move(self, event):
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+
+    def zoom(self, event):
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
+        factor = 1.1 if event.delta > 0 else 0.9
+        self.canvas.scale("all", x, y, factor, factor)
+
+        # Adjust the scroll region to encompass the new canvas
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+   
+    def hex_to_pixel(self, coord):
         q, r = coord
-        x = self.size * (math.sqrt(3) * q + math.sqrt(3)/2 * r) + xoffset  # Horizontal distance combining q and r
-        y = - self.size * (3/2 * r) + yoffset  # Vertical distance using r only
+        x = self.size * (math.sqrt(3) * q + math.sqrt(3)/2 * r) + self.xoffset  # Horizontal distance combining q and r
+        y = - self.size * (3/2 * r) + self.yoffset  # Vertical distance using r only
 
         return x, y
 
     def render_board(self):
+        self.canvas.delete("all")
         self.img_refs = set()
-        w = 800
-        h = 800
-        
-        self.draw_board(w // 2, h // 2)
+        self.draw_board()
 
-    def draw_board(self, xoffset, yoffset):
-        self.draw_tiles(xoffset, yoffset)
-        self.draw_edges(xoffset, yoffset)
-        self.draw_corners(xoffset, yoffset)
+    def draw_board(self):
+        self.draw_tiles()
+        self.draw_edges()
+        self.draw_corners()
 
-    def draw_corners(self, xoffset, yoffset):
+    def draw_corners(self):
         for corner in self.board.corners.values():
             # Assuming corner is an object with a method get_coords that returns coordinates
             corner_coords = corner.get_coords()
-            x, y = self.hex_to_pixel(corner_coords, xoffset, yoffset)
+            x, y = self.hex_to_pixel(corner_coords)
 
-            if corner.building == 'settlement':
+            if corner.building == 'city':
                 path = f"{self.base_dir}/assets/pngs/cities/city_{self.player_colors[corner.owner_id]}.png"
                 self.place_image_on_canvas( path, x, y, self.size, self.size, 0.5)
-            else:
-                self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white')
+            elif corner.building == 'settlement':
+                path = f"{self.base_dir}/assets/pngs/settlements/settlement_{self.player_colors[corner.owner_id]}.png"
+                self.place_image_on_canvas( path, x, y, self.size, self.size, 0.5)
 
-    def draw_edges(self, xoffset, yoffset):
-        for edge_k in self.board.edges:
-            if self.board.edges[edge_k].is_available():
+    def draw_edges(self):
+        for edge_k, edge in self.board.edges.items():
+            if edge.is_available():
                 continue
-            start_pixel = self.hex_to_pixel(edge_k[0], xoffset, yoffset)
-            end_pixel = self.hex_to_pixel(edge_k[1], xoffset, yoffset)
-            self.draw_edge(start_pixel, end_pixel)
+            start_pixel = self.hex_to_pixel(edge_k[0])
+            end_pixel = self.hex_to_pixel(edge_k[1])
+            # sus
+            start_pixel, end_pixel = sorted([start_pixel, end_pixel])
+            self.draw_edge(start_pixel, end_pixel, color=self.player_colors[edge.owner_id])
 
     def draw_edge(self, start, end, color = None):
         # Calculate midpoint
         #print(start, end)
         mid_x = (start[0] + end[0]) / 2
         mid_y = (start[1] + end[1]) / 2
+        
 
-        if start[1] == end[1]:
-            angle_deg = 0
-        elif start[1] < end[1]:
+        # print(start, end)
+
+        if start[1] < end[1]:
             angle_deg = -60
-        else:
-            angle_deg = 60 
-        path = f"{self.base_dir}/assets/pngs/roads/road_blue.png"
+        elif start[1] == end[1]:
+            angle_deg = 0
+        elif start[1] > end[1]:
+            angle_deg = 60
+
+        path = f"{self.base_dir}/assets/pngs/roads/road_{color}.png"
         self.place_image_on_canvas(path, mid_x, mid_y, self.size, self.size, 0.6, rotation=angle_deg)
 
-    def draw_tiles(self, xoffset, yoffset):
+    def draw_tiles(self):
         for tile in self.board.tiles.values():
-            x, y = self.hex_to_pixel(tile.get_coords(), xoffset, yoffset)
+            x, y = self.hex_to_pixel(tile.get_coords())
             self.draw_tile(x, y, tile.resource, tile.number)
 
     def draw_tile(self, x, y, r_type, number = None):
@@ -398,22 +474,152 @@ class Game(ctk.CTkFrame):
         # Return the image object to keep a reference
         self.img_refs.add(tk_image)
 
-    def update_board(self, board_d):
+    def init_board(self, board_d):
         self.board = Board.from_dict(board_d)
         self.render_board()
     
-    def update_player(self, player):
-        self.playerdict = player_d 
+    def update_board_edges(self, board_d):
+        self.board.update_edges_from_dict(board_d)
+        self.render_board()
+    
+    def update_board_corners(self, board_d):
+        self.board.update_corners_from_dict(board_d)
+        self.render_board()
+    
+    def update_players(self, player_d):
+        main_player = player_d['main_player']
+
+        self.resource_labels = main_player['resources'].keys()
+        self.resource_values = main_player['resources'].values()
+
+        for row, (label, value) in enumerate(zip(self.resource_labels, self.resource_values)):
+            resource_label = ctk.CTkLabel(self.resources_frame, text=label)
+            resource_label.grid(row=row, column=0, padx=5, pady=5, sticky="w")
+
+            resource_value = ctk.CTkLabel(self.resources_frame, text=value)
+            resource_value.grid(row=row, column=1, padx=5, pady=5, sticky="e")
 
     def some_game_action(self):
         print("Action performed!")
 
+    def draw_available_corners(self, corners, building):
+        self.cors = dict()
+
+        for corner in corners:
+            # Assuming corner is an object with a method get_coords that returns coordinates
+            avg_x = (corner[0][0] + corner[1][0] + corner[2][0]) / 3
+            avg_y = (corner[0][1] + corner[1][1] + corner[2][1]) / 3
+            x, y = self.hex_to_pixel((avg_x, avg_y))
+
+            
+
+            if building == 'settlement':
+                cor = self.canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill='white')
+                self.cors[cor] = corner
+                self.canvas.tag_bind(cor, "<Button-1>", lambda event, cor=cor: self.build_settlement(event, cor))
+            elif building == 'city':
+                cor = self.canvas.create_rectangle(x - 12, y - 12, x + 12, y + 12, fill='white')
+                self.cors[cor] = corner
+                self.canvas.tag_bind(cor, "<Button-1>", lambda event, cor=cor: self.build_city(event, cor))
+
+    def build_settlement(self, event, cor):
+        corner = self.cors[cor]
+        self.cors = dict()
+        self.render_board()
+        self.controller.network_manager.send_message({
+                'type': 'build',
+                'content': corner,
+                'building': 'settlement'
+            })
+    
+    def build_city(self, event, cor):
+        corner = self.cors[cor]
+        self.cors = dict()
+        self.render_board()
+        self.controller.network_manager.send_message({
+                'type': 'build',
+                'content': corner,
+                'building': 'city'
+            })
+    
+    def draw_available_edges(self, edges):
+        self.eds = dict()
+
+        for edge in edges:
+            # Assuming corner is an object with a method get_coords that returns coordinates
+            avg_x = (edge[0][0] + edge[1][0]) / 2
+            avg_y = (edge[0][1] + edge[1][1]) / 2
+            x, y = self.hex_to_pixel((avg_x, avg_y))
+
+            ed = self.canvas.create_oval(x - 7, y - 7, x + 7, y + 7, fill='white')
+            self.eds[ed] = edge
+            self.canvas.tag_bind(ed, "<Button-1>", lambda event, ed=ed: self.build_road(event, ed))
+
+    def build_road(self, event, ed):
+        edge = self.eds[ed]
+        self.eds = dict()
+        self.render_board()
+        self.controller.network_manager.send_message({
+                'type': 'build',
+                'content': edge,
+                'building': 'road'
+            })
+
     def display_chat_message(self, message):
-        """Display a message in the chat area."""
-        self.chat_display.config(state='normal')
-        self.chat_display.insert('end', message + '\n')
-        self.chat_display.config(state='disabled')
-        self.chat_display.yview('end')  # Auto-scroll to the bottom
+        self.chat_log.config(state='normal')  # Enable editing
+        self.chat_log.insert(tk.END, message + "\n")  # Add the message
+        self.chat_log.see(tk.END)  # Scroll to the end
+        self.chat_log.config(state='disabled')  # Disable editing
+
+    def allow_actions(self, actions):
+        for k, v in actions.items():
+            if k == 'roll':
+                self.toggle_roll(state='normal')
+            if k == 'build':
+                for b in v:
+                    if b == 'settlement':
+                        self.draw_available_corners(actions['build']['settlement'], b)
+                    elif b == 'road':
+                        self.draw_available_edges(actions['build']['road'])
+                    elif b == 'city':
+                        self.draw_available_corners(actions['build']['city'], b)
+            if k == 'end_turn':
+                self.toggle_end_turn(state='normal')
+    
+    def toggle_roll(self, state=None):
+        if state is not None:
+            self.roll_button.configure(state=state)
+        else:
+            current_state = self.roll_button.cget('state')
+            new_state = 'normal' if current_state == 'disabled' else 'disabled'
+            self.roll_button.configure(state=new_state)
+
+    def roll(self):
+        # Logic for rolling the dice
+        self.toggle_roll(state='disabled')
+        self.controller.network_manager.send_message({
+                'type': 'roll',
+                'content': None
+            })
+        # print('Dice rolled!')
+
+    def toggle_end_turn(self, state=None):
+        if state is not None:
+            self.end_turn_button.configure(state=state)
+        else:
+            current_state = self.end_turn_button.cget('state')
+            new_state = 'normal' if current_state == 'disabled' else 'disabled'
+            self.end_turn_button.configure(state=new_state)
+
+    def end_turn(self):
+        # Logic for ending the turn
+        self.toggle_end_turn(state='disabled')
+        self.controller.network_manager.send_message({
+                'type': 'end_turn',
+                'content': None
+            })
+
+
 
 class NetworkManager:
     def __init__(self, host, port, controller):
@@ -462,7 +668,8 @@ class NetworkManager:
                         except json.JSONDecodeError as e:
                             print(f"JSON decode error: {e} - Message: {message}")
             except Exception as e:
-                print(f"Error receiving message: {e}")
+                print("Error receiving message:")
+                traceback.print_exc()
                 self.connected = False
 
     def handle_message(self, message):
@@ -473,15 +680,24 @@ class NetworkManager:
         elif message['type'] == 'show_game':
             self.controller.raise_frame('game')
 
-        elif message['type'] == 'update_player':
-            self.controller.frames['game'].update_player(message['content'])
+        elif message['type'] == 'allow_actions':
+            self.controller.frames['game'].allow_actions(message['content'])
 
-        elif message['type'] == 'update_board':
-            self.controller.frames['game'].update_board(message['content'])
+        elif message['type'] == 'update_players':
+            self.controller.frames['game'].update_players(message['content'])
+        
+        elif message['type'] == 'init_board':
+            self.controller.frames['game'].init_board(message['content'])
 
-        elif message['type'] == 'recieve_game_chat':
-            chat = message['content']['chat']
-            self.controller.frames['game'].display_chat_message(chat)
+        elif message['type'] == 'update_board_corners':
+            self.controller.frames['game'].update_board_corners(message['content'])
+        
+        elif message['type'] == 'update_board_edges':
+            self.controller.frames['game'].update_board_edges(message['content'])
+
+        elif message['type'] == 'game_info':
+            info = message['content']
+            self.controller.frames['game'].display_chat_message(info)
 
         elif message['type'] == 'join_lobby':
             self.controller.raise_frame('lobby')

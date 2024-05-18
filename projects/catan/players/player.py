@@ -22,37 +22,20 @@ class Player:
         
 
     def build(self, building: str, gamephase: int, placement: Optional[Tuple] = None) -> bool:
-        if not self.can_build:
-            print("Player is not allowed to build right now")
-            return False
-        if gamephase == 1: # first settlement and road phase
-            if building not in ["settlement", "road"]:
-                print("player is not allowed to build {building} in this phase")
-                return False
-            self.buildings[building].add((edge, corner))
-            print(f"{self.name} aquired a {building}.")
-            return True
-        recipe = self.config['buildings'][building]['recipe']
-        if not all(self.resources[res] >= recipe['resources'][res] for res in recipe['resources']):
-            print(f"Not enough resources to build a {building}.")
-            return False
-        if not all(self.buildings[build] >= recipe['buildings'][build] for build in recipe['buildings']):
-            print(f"Not enough buildings to build a {building}.")
-            return False
-        if self.buildings[building] >= self.config['buildings'][building]['limit']:
-            print(f"{building} limit reached.")
-            return False
-        if self.config['buildings'][building]['placement'] is not None and placement is None:
-            print(f"no placement provided for {building}")
-            return False
-    
-        for res in recipe['resources']:
-            self.resources[res] -= recipe['resources'][res]
-        for build in recipe['buildings']:
-            self.resources[build] -= recipe['buildings'][build]
         
-        self.buildings[building] += 1
-        print(f"{self.name} aquired a {building}.")
+        if gamephase == 2:
+            recipe = self.config['buildings'][building]['recipe']
+            for res in recipe['resources']:
+                self.resources[res] -= recipe['resources'][res]
+            for build in recipe['buildings']:
+                if placement is not None:
+                    self.buildings[build].remove(placement)
+        
+        if placement is not None:
+            self.buildings[building].add(placement)
+        else:
+            self.buildings[building] += 1
+
         return True
 
     def start_turn(self, gamephase: int):
@@ -91,7 +74,7 @@ class Player:
             a = corner[0]
             b = corner[1]
             c = corner[2]
-            if corner[1][1] > corner[0][1]:
+            if c[1] > b[1]:
                 # normal triangle
                 # check corner bottom left, bottom right and up
                 
@@ -99,21 +82,17 @@ class Player:
                 bottom_right_key = (b,c,(b[0]+1,b[1]))
                 up_key = (a,(a[0],a[1]+1),c)
 
-                keys_to_check.append(bottom_left_key)
-                keys_to_check.append(bottom_right_key)
-                keys_to_check.append(up_key)
-            
+                keys_to_check = [bottom_left_key, bottom_right_key, up_key]
+
             else:
                 # upsidedown
                 # check corner top left, top right, bottom
 
                 top_left_key = ((b[0]-1,b[1]),a,b)
                 top_right_key = (b,c,(b[0]+1,b[1]))
-                bottom_key = (a,(b[0],b[1]-1),c)
+                bottom_key = (a,(c[0],c[1]-1),c)
 
-                keys_to_check.append(top_left_key)
-                keys_to_check.append(top_right_key)
-                keys_to_check.append(bottom_key)
+                keys_to_check = [top_left_key, top_right_key, bottom_key]
 
             is_valid = True
             for key in keys_to_check:
@@ -128,7 +107,7 @@ class Player:
         return valid_corners  
 
     def get_valid_settlement_pos(self, edges: Dict[Tuple[Tuple[int, int], Tuple[int, int]], Edge], corners: Dict[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]], Corner]):
-        valid_corner_pos = get_valid_corner_pos(corners)
+        valid_corner_pos = self.get_valid_corner_pos(corners)
         valid_settlement_pos = []
         # check if there is a road to this village
         # iterate over valid corner pos
@@ -162,6 +141,10 @@ class Player:
         # 2. one of the four edges connected to the 2 corners to the edge is owned by the player
         # in both cases get the coordinates of all 4 tiles a, b, c, d
         for edge in edges:
+
+            if not edges[edge].is_available():
+                continue
+
             # case if the edge is vertical -> tiles are one apart on x, and the same on y 
             if edge[1][0] - edge[0][0] == 1 and edge[0][1] == edge[1][1]:
                 a = edge[0]
@@ -222,35 +205,87 @@ class Player:
                 
         return valid_pos
 
-    def get_legal_moves(self, gamephase: int, edges: Dict[Tuple[Tuple[int, int], Tuple[int, int]], Edge], corners: Dict[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]], Corner]):
-        actions = []
-        if self.can_roll_dice:
-            actions.append("can_roll_dice")
-        if self.can_end_turn:
-            actions.append("can_end_turn")
-        if self.can_trade:
-            actions.append("can_trade")
-        if self.can_build:
-            actions.append("can_build")
-            builds = []
-            if gamephase == 1: # -> platzieren der ersten zwei siedlungen/straßen
-                # check how many roads and settlements he can still build
-                if len(self.buildings["road"]) < len(self.buildings["settlement"]):
-                    builds.append(get_valid_village_pos(edges, corners))
-                else:
-                    builds.append(get_valid_village_pos(edges, corners))
-            if gamephase == 2: # -> normales spiel
-                pass
-        
-            actions.append(builds)
+    def get_legal_moves(self, has_rolled: bool, edges: Dict[Tuple[Tuple[int, int], Tuple[int, int]], Edge], corners: Dict[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]], Corner]):
+        actions = {}
 
-    
+        if not has_rolled:
+            # for now only allow to roll, later play certain development cards that trigger before rolling
+            return {'roll': None}
 
+        # player can end turn, build, buy or trade
+
+        # end turn
+        actions['end_turn'] = None
+        actions['build'] = {}
+
+        # build 
+        # iterate over all buildings in the config, check if they can be build
+        for k, v in self.config['buildings'].items():
+            # skip development cards, or buildings with no position
+            if v['placement'] is None:
+                continue
             
-    
-           
+            # iterate of recipe check if resources/buildings are available
+            is_buildable = True
+            for r_k, r_v in v['recipe']['buildings'].items():
+                if len(self.buildings[r_k]) < r_v:
+                    is_buildable = False
+                    break
+            
+            if not is_buildable:
+                continue
+            
+            for r_k, r_v in v['recipe']['resources'].items():
+                if self.resources[r_k] < r_v:
+                    is_buildable = False
+                    break
+            
+            if not is_buildable:
+                continue
 
-  
+            # check all hardcoced buildings, not ideal, 
+            if k == 'road':
+                actions['build'][k] = self.get_valid_road_pos(edges, corners)
+            elif k == 'settlement':
+                actions['build'][k] = self.get_valid_settlement_pos(edges, corners)
+            elif k == 'city':
+                actions['build'][k] = self.get_valid_city_pos(corners)
+            else:
+                print(f'unknown building: {k}')
+
+        return actions
+
+    def get_all_info(self):
+        d = dict()
+        d['name'] = self.name
+        d['id'] = self.player_id
+        d['victory_points'] = self.get_victory_points()
+        d['resources'] = self.resources
+        d['development_cards'] = self.development_cards
+        d['buildings_left'] = {}
+        for building, v in self.config['buildings'].items():
+            d['buildings_left'][building] = v['limit'] - len(self.buildings[building])
+        
+        return d
+
+    def get_public_info(self):
+        d = dict()
+        d['name'] = self.name
+        d['id'] = self.player_id
+        d['victory_points'] = self.get_victory_points()
+        d['resources'] = 0
+        for r in self.resources.values():
+            d['resources'] += r
+        d['development_cards'] = len(self.development_cards)
+
+        return d
+    
+    def get_victory_points(self):
+        points = 0
+        for k,v in self.buildings.items():
+            points += self.config['buildings'][k]['points'] * len(v)
+
+        return points
 
     def __repr__(self) -> str:
         return (f"Player({self.name}, Victory Points: {self.victory_points}, Resources: {self.resources}, "

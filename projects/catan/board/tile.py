@@ -10,16 +10,18 @@ class Tile:
         return f"Tile({self.resource}, {self.number})"
 
     def to_dict(self):
-        d = {'resource': self.resource, 'number': self.number}
-        d['coords1'] = [self.coord[0], self.coord[1]]
+        d = {'r': self.resource}
+        if self.number is not None:
+            d['n'] = self.number
+        d['c1'] = [self.coord[0], self.coord[1]]
         return d
 
     def from_dict(d):
-        coords1 = tuple((int(d['coords1'][0]),int(d['coords1'][1])))
-        number_d = d['number']
+        coords1 = tuple((int(d['c1'][0]),int(d['c1'][1])))
+        number_d = d.get('n', None)
         if number_d is not None:
             number_d = int(number_d)
-        return Tile(tile_coord=coords1, resource=d['resource'], number=number_d)
+        return Tile(tile_coord=coords1, resource=d['r'], number=number_d)
         
     def get_coords(self):
         return self.coord
